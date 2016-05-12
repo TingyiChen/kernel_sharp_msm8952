@@ -2350,7 +2350,45 @@ void sdhci_msm_dump_pwr_ctrl_regs(struct sdhci_host *host)
 		readl_relaxed(msm_host->core_mem + CORE_PWRCTL_MASK),
 		readl_relaxed(msm_host->core_mem + CORE_PWRCTL_CTL));
 }
+#ifdef CONFIG_ARCH_PA35
+static void
+sdhci_msm_set_enpwr_gpio(struct sdhci_msm_host *msm_host, bool enable)
+{
+	int rc;
+	int sdpwr_en = 0;
+	struct device_node *np = msm_host->pdev->dev.of_node;
 
+	sdpwr_en = of_get_named_gpio(np, "sdpwr-gpio", 0);
+	if (!gpio_is_valid(sdpwr_en)) {
+		pr_debug("sdpwr-gpio resource error\n");
+		return;
+	}
+
+	if (enable) {
+		if(mmc_gpio_get_cd(msm_host->mmc) == 1) {
+			rc = gpio_request(sdpwr_en, "sdpwr_en_gpio");
+			if (rc) {
+				pr_err("request for sdpwr_en_gpio failed, rc=%d\n", rc);
+			} else {
+				gpio_set_value(sdpwr_en, enable);
+				gpio_free(sdpwr_en);
+			}
+		}
+	} else {
+		rc = gpio_request(sdpwr_en, "sdpwr_en_gpio");
+		if (rc) {
+			pr_err("request for sdpwr_en_gpio failed, rc=%d\n", rc);
+		} else {
+			gpio_set_value(sdpwr_en, enable);
+			gpio_free(sdpwr_en);
+		}
+		msleep(10);
+	}
+
+	pr_debug("%s: set sd vdd power(%d)\n",
+			mmc_hostname(msm_host->mmc), enable);
+}
+#endif
 static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 {
 	struct sdhci_host *host = (struct sdhci_host *)data;
@@ -2402,6 +2440,9 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 
 	/* Handle BUS ON/OFF*/
 	if (irq_status & CORE_PWRCTL_BUS_ON) {
+#ifdef CONFIG_ARCH_PA35
+		sdhci_msm_set_enpwr_gpio(msm_host, true);
+#endif
 		ret = sdhci_msm_setup_vreg(msm_host->pdata, true, false);
 		if (!ret) {
 			ret = sdhci_msm_setup_pins(msm_host->pdata, true);
@@ -2419,6 +2460,9 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	if (irq_status & CORE_PWRCTL_BUS_OFF) {
 		ret = sdhci_msm_setup_vreg(msm_host->pdata, false, false);
 		if (!ret) {
+#ifdef CONFIG_ARCH_PA35
+			sdhci_msm_set_enpwr_gpio(msm_host, false);
+#endif
 			ret = sdhci_msm_setup_pins(msm_host->pdata, false);
 			ret |= sdhci_msm_set_vdd_io_vol(msm_host->pdata,
 					VDD_IO_LOW, 0);
