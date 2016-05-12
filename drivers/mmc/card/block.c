@@ -1858,7 +1858,16 @@ static int mmc_blk_err_check(struct mmc_card *card,
 				       status);
 				gen_err = 1;
 			}
-
+#ifdef CONFIG_ARCH_PA35
+			if (mmc_card_mmc(card)) {
+				if (status & R1_CC_ERROR) {
+					pr_err("%s: %s: general error sending status command(for CC), card status %#x\n",
+					       req->rq_disk->disk_name, __func__,
+					       status);
+					gen_err = 1;
+				}
+			}
+#endif
 			/* Timeout if the device never becomes ready for data
 			 * and never leaves the program state.
 			 */
