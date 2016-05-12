@@ -1631,6 +1631,13 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 		data->timeout_ns = 4000000000u; /* 4s */
 		data->timeout_clks = 0;
 	}
+#ifdef CONFIG_ARCH_PA35
+	/* Increase the timeout value for eve */
+	if (mmc_card_mmc(card)) {
+		data->timeout_ns = 1500000000u; /* 1.5s */
+		data->timeout_clks = 0;
+	}
+#endif
 	/* Some emmc cards require a longer read/write time */
 	if (card->quirks & MMC_QUIRK_BROKEN_DATA_TIMEOUT) {
 		if (data->timeout_ns <  4000000000u)
