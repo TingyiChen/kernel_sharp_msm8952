@@ -34,7 +34,9 @@
 #include "host.h"
 
 #define cls_dev_to_mmc_host(d)	container_of(d, struct mmc_host, class_dev)
-
+#ifdef CONFIG_ARCH_PA35
+bool mmc_sd_pending_resume = false;
+#endif
 static void mmc_host_classdev_release(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
@@ -187,6 +189,15 @@ static int mmc_host_suspend(struct device *dev)
 			host->cmdq_ops->disable(host, true);
 			mmc_host_clk_release(host);
 		}
+#ifdef CONFIG_ARCH_PA35
+		if (host->card && (mmc_card_sd(host->card))) {
+			if (mmc_sd_pending_resume) {
+				mmc_sd_pending_resume = false;
+				host->dev_status = DEV_SUSPENDED;
+				return 0;
+			}
+		}
+#endif
 		ret = mmc_suspend_host(host);
 		if (ret < 0)
 			pr_err("%s: %s: failed: ret: %d\n", mmc_hostname(host),
@@ -241,6 +252,13 @@ static int mmc_host_resume(struct device *dev)
 		return 0;
 
 	if (!pm_runtime_suspended(dev)) {
+#ifdef CONFIG_ARCH_PA35
+		if (host->card && (mmc_card_sd(host->card))) {
+			mmc_sd_pending_resume = true;
+			host->dev_status = DEV_RESUMED;
+			return 0;
+		}
+#endif
 		ret = mmc_resume_host(host);
 		if (!ret && mmc_bus_needs_resume(host))
 			goto out;

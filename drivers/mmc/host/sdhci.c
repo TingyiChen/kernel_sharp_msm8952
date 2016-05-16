@@ -53,7 +53,9 @@
 
 #define SDHCI_DBG_DUMP_RS_INTERVAL (10 * HZ)
 #define SDHCI_DBG_DUMP_RS_BURST 2
-
+#ifdef CONFIG_ARCH_PA35
+extern bool mmc_sd_pending_resume;
+#endif
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
 
@@ -1676,7 +1678,14 @@ static int sdhci_enable(struct mmc_host *mmc)
 
 	if (host->ops->platform_bus_voting)
 		host->ops->platform_bus_voting(host, 1);
-
+#ifdef CONFIG_ARCH_PA35
+	if (mmc->card && (mmc_card_sd(mmc->card))) {
+		if (mmc_sd_pending_resume == true) {
+			mmc_sd_pending_resume = false;
+			mmc_resume_host(mmc);
+		}
+	}
+#endif
 	return 0;
 }
 
