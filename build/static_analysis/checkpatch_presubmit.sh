@@ -53,7 +53,7 @@ if [[ -z $BUILD_ID ]]; then
   exit 0
 fi
 
-# Skip checkpatch for postsubmit (b/35390488)
+# Skip checkpatch for postsubmit (b/35390488).
 set +e
 echo "${BUILD_ID}" | grep -E "^P[0-9]+"
 if [[ $? -ne 0 ]]; then
