@@ -69,7 +69,6 @@
 #include <linux/wireless.h>
 #include <wlan_hdd_wowl.h>
 #include <aniGlobal.h>
-#include <soc/qcom/socinfo.h>
 #include "ccmApi.h"
 #include "sirParams.h"
 #include "dot11f.h"
@@ -4851,11 +4850,9 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
     }
 
     /* D2D RTT is not supported currently by default */
-    if(!of_board_is_sharp_eve()) {
-        if (sme_IsFeatureSupportedByFW(RTT)) {
-            hddLog(LOG1, FL("RTT is supported by firmware"));
-            fset |= WIFI_FEATURE_D2AP_RTT;
-        }
+    if (sme_IsFeatureSupportedByFW(RTT)) {
+        hddLog(LOG1, FL("RTT is supported by firmware"));
+        fset |= WIFI_FEATURE_D2AP_RTT;
     }
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
