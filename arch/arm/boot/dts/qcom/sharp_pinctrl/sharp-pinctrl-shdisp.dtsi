@@ -1,0 +1,53 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		shdisp_test_mode: shdisp_test_mode {
+			qcom,pins = <&gp 133>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shdisp-test_mode-pin";
+
+			shdisp_test_mode_pull_up: active {
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-up; /* pull up */
+			};
+			shdisp_test_mode_pull_down: suspend {
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-down; /* pull down */
+			};
+		};
+
+		leds_rst: leds_rst {
+			qcom,pins = <&gp 129>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "leds_rst-pin";
+
+			leds_rst_active: active {
+				drive-strength = <2>; /* 2 mA */
+				bias-disable; /* NoPull */
+			};
+			leds_rst_suspend: suspend {
+				drive-strength = <2>; /* 2 mA */
+				bias-disable; /* NoPull */
+			};
+		};
+
+	};
+};
+

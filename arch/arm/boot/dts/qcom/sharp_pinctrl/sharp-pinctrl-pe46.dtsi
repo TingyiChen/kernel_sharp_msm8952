@@ -1,0 +1,91 @@
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*****************************************/
+/*  Add SHARP include                    */
+/*****************************************/
+#include "sharp-pinctrl-pe46-sdcc.dtsi"
+#include "sharp-pinctrl-shflip.dtsi"
+#include "sharp-pinctrl-shdisp.dtsi"
+#include "sharp-pinctrl-prox.dtsi"
+#include "sharp-pinctrl-shub.dtsi"
+#include "sharp-pinctrl-nfc.dtsi"
+#include "sharp-pinctrl-pe46-usb.dtsi"
+#include "sharp-pinctrl-shtps.dtsi"
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		/*****************************************/
+		/*  pinctrl customize setting            */
+		/*****************************************/
+
+		/*****************************************/
+		/*  UART/Serial                          */
+		/*****************************************/
+		blsp2_lsuart1_tx_active {
+			blsp2_lsuart1_tx_active: default {
+				/delete-property/ bias-pull-down;
+				bias-disable;
+			};
+		};
+
+		blsp2_lsuart1_tx_sleep {
+			blsp2_lsuart1_tx_sleep: sleep {
+				/delete-property/ bias-pull-down;
+				bias-disable;
+			};
+		};
+
+		blsp2_lsuart1_rx_active {
+			blsp2_lsuart1_rx_active: default {
+				/delete-property/ bias-pull-down;
+				bias-pull-up;
+			};
+		};
+
+		blsp2_lsuart1_rx_sleep {
+			blsp2_lsuart1_rx_sleep: sleep {
+				/delete-property/ bias-pull-down;
+				bias-pull-up;
+			};
+		};
+
+		/*****************************************/
+		/*  I2C                                  */
+		/*****************************************/
+		blsp1_i2c_2 {
+			/* CLK, DATA */
+			blsp1_i2c_2_active: blsp1_i2c_2_active{
+				drive-strength = <4>; /* 4 MA */
+			};
+			/* suspended state */
+			blsp1_i2c_2_sleep: blsp1_i2c_2_sleep {
+				drive-strength = <4>; /* 4 MA */
+			};
+		};
+
+		blsp2_i2c_1 {
+			blsp2_i2c_1_active: blsp2_i2c_1_active {
+				drive-strength = <4>; /* 4 MA */
+			};
+
+			blsp2_i2c_1_sleep: blsp2_i2c_1_sleep {
+				drive-strength = <4>; /* 4 MA */
+			};
+		};
+
+	};
+};

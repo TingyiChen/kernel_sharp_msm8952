@@ -1,0 +1,273 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sharp_pinctrl/sharp-pinctrl-al50.dtsi"
+#include "sharp-al50-shdisp.dtsi"
+
+/ {
+};
+
+&soc {
+	/*****************************************/
+	/*  BLSP#1                               */
+	/*****************************************/
+
+	/*****************************************/
+	/*  BLSP#2(BLSP1_QUP2)                   */
+	/*****************************************/
+	i2c@78B6000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#3(BLSP1_QUP3)                   */
+	/*****************************************/
+	spi@78B7000 {
+		status = "ok";
+		shtps_rmi@0 {
+			status = "ok";
+			compatible = "sharp,shtps_rmi";
+			reg = <0>;
+			spi-max-frequency = <400000>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <65 0>;
+			spi-cpol;
+			spi-cpha;
+			/* user defined property */
+			shtps_rmi,rst_pin = <&msm_gpio 64 0>;
+			shtps_rmi,vdd_3_0V = <&pm8950_l15>;
+			shtps_rmi,tpin = <&msm_gpio 133 0>;
+		};
+	};
+
+	i2c@78B7000 {
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#4(BLSP1_QUP4)                   */
+	/*****************************************/
+	spi@78B8000 {
+		status = "ok";
+		sensorhub@0 {
+			status = "ok";
+			compatible = "sharp,sensorhub";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <44 0>;
+			spi-cpol;
+			spi-cpha;
+			qcom,shub-gpio-reset = <&msm_gpio 39 0>;
+			qcom,shub-gpio-brmp = <&msm_gpio 86 0>;
+			qcom,shub-gpio-int0 = <&msm_gpio 44 0>;
+			qcom,shub-gpio-int1 = <&msm_gpio 42 0>;
+			pinctrl-names = "shub_reset_active","shub_reset_suspend",
+							"shub_int0_active","shub_int0_suspend",
+							"shub_int0_pullup","shub_int0_pulldown",
+							"shub_int1_active","shub_int1_suspend",
+							"shub_brmp_active","shub_brmp_suspend";
+			pinctrl-0 = <&shub_reset_active>;
+			pinctrl-1 = <&shub_reset_suspend>;
+			pinctrl-2 = <&shub_int0_active>;
+			pinctrl-3 = <&shub_int0_suspend>;
+			pinctrl-4 = <&shub_int0_pullup>;
+			pinctrl-5 = <&shub_int0_pulldown>;
+			pinctrl-6 = <&shub_int1_active>;
+			pinctrl-7 = <&shub_int1_suspend>;
+			pinctrl-8 = <&shub_brmp_active>;
+			pinctrl-9 = <&shub_brmp_suspend>;
+			shub,shub_acc_axis_val = <0>;
+			shub,shub_gyro_axis_val = <0>;
+			shub,shub_mag_axis_val = <0>;
+		};
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_QUP1)                   */
+	/*****************************************/
+	i2c@7AF5000 {
+		status = "ok";
+
+		cxd224x-i2c@28 {
+			status = "ok";
+			compatible = "cxd224x-i2c";
+			reg = <0x28>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <62 0>;
+			cxd224x,irq_gpio  = <&msm_gpio 62 0x00>;
+			cxd224x,wake_gpio = <&msm_gpio 41 0x00>;
+			cxd224x,rst_gpio  = <&msm_gpio 35 0x00>;
+			pinctrl-names = "cxd224x_default_int","cxd224x_default_wake","cxd224x_default_rst";
+			pinctrl-0 = <&nfc_nint_active>;
+			pinctrl-1 = <&nfc_pon_active>;
+			pinctrl-2 = <&nfc_rst_active>;
+		};
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_LSUART1)                */
+	/*****************************************/
+	serial@7AEF000 {
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#6(BLSP2_QUP2)                   */
+	/*****************************************/
+	spi@7AF6000 {
+		status = "ok";
+
+		shdtv_spi@0 {
+			status = "ok";
+			compatible = "sharp,shdtv_spi";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+/*			spi-cpol; */
+/*			spi-cpha; */
+		};
+	};
+
+	/*****************************************/
+	/*  BLSP#7(BLSP2_QUP3)                   */
+	/*****************************************/
+	i2c@7AF7000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#8                               */
+	/*****************************************/
+	i2c@7AF8000 {
+		status = "ok";
+		blsp_i2c_ga2ap030@39 {
+			compatible = "sharp,gp2ap030"; 
+			status = "ok";
+			reg = <0x39>;
+
+			qcom,prox-int-gpio  = <&msm_gpio 43 0x00>;
+			interrupt-parent  = <&msm_gpio>;
+			interrupts = <43 0>;
+			pinctrl-names = "prox_int_active","prox_int_suspend";
+			pinctrl-0 = <&prox_int_active>;
+			pinctrl-1 = <&prox_int_suspend>;
+		};
+	};
+
+	flip_switch {
+		compatible = "flip_switch";
+		qcom,flip-det-gpio  = <&msm_gpio 45 0x00>;
+		interrupt-parent  = <&msm_gpio>;
+		interrupts = <45 0>;
+		interrupt-names = "flip_det";
+		pinctrl-names = "flip_det_active","flip_det_suspend";
+		pinctrl-0 = <&flip_det_active>;
+		pinctrl-1 = <&flip_det_suspend>;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		camera_key {
+			label = "camera_key";
+			gpios = <&msm_gpio 131 0x1>;
+			linux,input-type = <1>;
+			linux,code = <212>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		camera_focus {
+			label = "camera_focus";
+			gpios = <&msm_gpio 132 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x210>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+/* SH_AUDIO_DRIVER -> */ /*22-001*/
+	sound {
+		compatible = "qcom,msm8952-audio-codec";
+		qcom,model = "msm8952-snd-card-mtp";
+/* SH_AUDIO_DRIVER -> */ /*22-004*/
+		qcom,msm-mbhc-hphl-swh = <1>;
+/* SH_AUDIO_DRIVER <- */ /*22-004*/
+		qcom,msm-hs-micbias-type = "external";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS External2",
+			"AMIC3", "MIC BIAS External";
+		qcom,msm-gpios =
+			"pri_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		qcom,msm-micbias1-ext-cap;
+/* SH_AUDIO_DRIVER -> */ /*22-004*/
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act>;
+		/delete-property/ pinctrl-2;
+		/delete-property/ pinctrl-3;
+/* SH_AUDIO_DRIVER <- */ /*22-004*/
+		/delete-property/ asoc-wsa-codec-names;
+	};
+/* SH_AUDIO_DRIVER <- */ /*22-001*/
+
+	snfc_en {
+		compatible = "snfc_en";
+		qcom,nfc-nint   = <&msm_gpio 62 0x00>;
+		qcom,nfc-status = <&msm_gpio 63 0x00>;
+		pinctrl-names = "nfc_pon_active","nfc_pon_suspend",
+						"nfc_status_active","nfc_status_suspend";
+		pinctrl-0 = <&nfc_pon_active>;
+		pinctrl-1 = <&nfc_pon_suspend>;
+		pinctrl-2 = <&nfc_status_active>;
+		pinctrl-3 = <&nfc_status_suspend>;
+	};
+
+	tunctrl {
+		compatible = "tunctrl";
+		qcom,dtv-en-gpio = <&msm_gpio 3 0x00>;
+		qcom,spi-mosi-gpio = <&msm_gpio 20 0x00>;
+		qcom,spi-miso-gpio = <&msm_gpio 21 0x00>;
+		qcom,spi-csn-gpio = <&msm_gpio 22 0x00>;
+		qcom,spi-clk-gpio = <&msm_gpio 23 0x00>;
+	};
+};
+
+/* SH_AUDIO_DRIVER -> */ /*22-003*/
+&pm8950_1 {
+	pm8950_cajon_dig: 8952_wcd_codec@f000 {
+		compatible = "qcom,msm8x16_wcd_codec";
+		qcom,cdc-micbias-cfilt-mv = <2750000>;
+	};
+};
+/* SH_AUDIO_DRIVER <- */ /*22-003*/
+
+#include "sharp-al50-vib.dtsi"
+#include "sharp-al50-pm8952.dtsi"
+#include "sharp-al50-pmi8952.dtsi"

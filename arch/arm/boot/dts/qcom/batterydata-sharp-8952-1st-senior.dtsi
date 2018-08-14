@@ -1,0 +1,59 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,sharp-8952-1st-senior {
+	qcom,max-voltage-uv = <4360000>;
+	qcom,nom-batt-capacity-mah = <2810>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "sharp";
+	qcom,chg-rslow-comp-c1 = <3077521>;
+	qcom,chg-rslow-comp-c2 = <4892497>;
+	qcom,chg-rs-to-rslow = <1040222>;
+	qcom,chg-rslow-comp-thr = <0xAF>;
+	qcom,checksum = <0xB6A8>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,fg-profile-data = [
+		 DC 83 79 7C
+		 A0 80 4C 76
+		 53 83 E8 57
+		 46 82 8C 8D
+		 43 82 22 99
+		 0E BC 4B C8
+		 58 14 E7 83
+		 67 7C 75 80
+		 DD 75 59 83
+		 B4 58 B0 81
+		 A8 8D 73 82
+		 84 98 4A B7
+		 EA C3 58 10
+		 CA 0A 56 5A
+		 0F 6F 71 FD
+		 08 25 0B 46
+		 CF 38 00 00
+		 02 4C 28 38
+		 FE 3A 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 A1 70 FE 6B
+		 8B 62 2A 81
+		 CE 6F 87 5B
+		 1A 68 DC 80
+		 1C 6F 2D 5B
+		 ED 7C 8E 9A
+		 18 B7 63 10
+		 65 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

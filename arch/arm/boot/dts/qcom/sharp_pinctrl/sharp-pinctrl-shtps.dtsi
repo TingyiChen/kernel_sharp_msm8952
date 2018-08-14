@@ -1,0 +1,36 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		shtps_test_mode: shtps_test_mode {
+			qcom,pins = <&gp 133>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shtps-test_mode-pin";
+
+			shtps_test_mode_pull_up: shtps_test_mode_pull_up {
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-up; /* pull up */
+			};
+
+			shtps_test_mode_pull_down: shtps_test_mode_pull_down {
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-down; /* pull down */
+			};
+		};
+	};
+};

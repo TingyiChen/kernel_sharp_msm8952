@@ -1,0 +1,12 @@
+
+menu "SHARP WLAN factory support"
+
+config SHARP_WLAN_FACTORY
+	bool "Sharp WLAN factory support"
+	default n
+
+config SHARP_WLAN_FORCE_NO_USE
+	bool "Force no use of WLAN for particular HW version"
+	default n
+
+endmenu

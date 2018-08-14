@@ -1,0 +1,13 @@
+# drivers/sharp/wifi/Kconfig
+
+menu "Wi-Fi Configuration"
+
+config HEART_BEAT_THRESHOLD_STADEF
+    int "WLAN Heart Beat Threshold"
+    range 0 10000
+    default 0
+    help
+      The number of beacon misses that the connected AP would be considered as out of range.
+
+endmenu
+

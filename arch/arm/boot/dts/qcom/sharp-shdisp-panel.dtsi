@@ -1,0 +1,23 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	sharp,shdisp_panel_det {
+		compatible = "sharp,shdisp_panel_det";
+		status = "disabled";
+		lcd_det_gpio = <&pm8950_gpios 6 0>;
+		interrupt-parent = <&spmi_bus>;  // PM8950 on spmi_bus node;
+		interrupts = <0x0 0xc5 0x0>;     // PM8950_GPIO06 = 0xc500 ,
+		interrupt-names = "shdisp_panel_det";
+	};
+};
+

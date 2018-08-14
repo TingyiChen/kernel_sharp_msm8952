@@ -1,0 +1,103 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	/*---------------------*/
+	/* an32180a IC         */
+	/*---------------------*/
+	leds,an32180 {
+		compatible = "leds,leds_an32180";
+		status = "ok";
+		leds_rst_gpio = <&msm_gpio 129 0>;
+
+		pinctrl-names = "leds_rst_active", "leds_rst_suspend";
+		pinctrl-0 = <&leds_rst_active>;
+		pinctrl-1 = <&leds_rst_suspend>;
+
+		/* no: 0=1group / 1=2group / 2=3group */
+		/* color: 0=RED(Bgroup) / 1=GREEN(Cgroup) / 2=BLUE(Dgroup) */
+		red_led: rgb_0 {
+			label = "red";
+			no = <0>;
+			color = <0>;
+			max-current = <255>;
+			pause-hi = <5>;
+			pause-lo = <5>;
+		};
+
+		green_led: rgb_1 {
+			label = "green";
+			no = <0>;
+			color = <1>;
+			max-current = <255>;
+		};
+
+		blue_led: rgb_2 {
+			label = "blue";
+			no = <0>;
+			color = <2>;
+			max-current = <255>;
+		};
+
+		red_led2: rgb_3 {
+			label = "red2";
+			no = <1>;
+			color = <0>;
+			max-current = <255>;
+		};
+
+		green_led2: rgb_4 {
+			label = "green2";
+			no = <1>;
+			color = <1>;
+			max-current = <255>;
+		};
+
+		blue_led2: rgb_5 {
+			label = "blue2";
+			no = <1>;
+			color = <2>;
+			max-current = <255>;
+		};
+
+		red_led3: rgb_6 {
+			label = "red3";
+			no = <2>;
+			color = <0>;
+			max-current = <255>;
+		};
+
+		green_led3: rgb_7 {
+			label = "green3";
+			no = <2>;
+			color = <1>;
+			max-current = <255>;
+		};
+
+		blue_led3: rgb_8 {
+			label = "blue3";
+			no = <2>;
+			color = <2>;
+			max-current = <255>;
+		};
+	};
+
+	/* BLSP#2 */
+	i2c@78B6000 {
+		/* SLAVESEL to GND */
+		leds_i2c@50 {
+			compatible = "leds,leds_i2c";
+			status = "ok";
+			reg = <0x50>;
+		};
+	};
+};

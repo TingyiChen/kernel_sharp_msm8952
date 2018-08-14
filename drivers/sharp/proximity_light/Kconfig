@@ -1,0 +1,8 @@
+menu "Proximity & Light Sensor"
+
+config PROX_LIGHT
+	bool "enable PROX_LIGHT"
+	default n
+
+endmenu
+
