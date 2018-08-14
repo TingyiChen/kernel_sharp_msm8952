@@ -12,7 +12,7 @@ source ${STATIC_ANALYSIS_SRC_DIR}/../envsetup.sh
 export OUT_DIR=$(readlink -m ${OUT_DIR:-${ROOT_DIR}/out/${BRANCH}})
 export DIST_DIR=$(readlink -m ${DIST_DIR:-${OUT_DIR}/dist})
 
-REPO_PROP_PATH=${DIST_DIR}/repo.prop
+APPLIED_PROP_PATH=${DIST_DIR}/applied.prop
 BUILD_INFO_PATH=${DIST_DIR}/BUILD_INFO
 
 verify_file_exists() {
@@ -63,11 +63,13 @@ fi
 set -e
 
 # Pick the correct patch to test.
-verify_file_exists ${REPO_PROP_PATH}
-GIT_SHA1=$(grep -E "${KERNEL_DIR} [0-9a-f]+" "${REPO_PROP_PATH}" | awk '{print $2}')
+verify_file_exists ${APPLIED_PROP_PATH}
+GIT_SHA1=$(grep -E "${KERNEL_DIR} [0-9a-f]+" "${APPLIED_PROP_PATH}" | awk '{print $2}')
 if [[ -z ${GIT_SHA1} ]]; then
-  echo "Failed to find git sha1 for ${KERNEL_DIR}."
-  exit 1
+  # Since applied.prop only tracks user changes, ignore projects that are
+  # included in presubmit without any changed files.
+  echo "No changes to apply for ${KERNEL_DIR}."
+  exit 0
 fi
 
 ${STATIC_ANALYSIS_SRC_DIR}/checkpatch.sh --git_sha1 ${GIT_SHA1} ${FORWARDED_ARGS[*]}
