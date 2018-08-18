@@ -57,6 +57,10 @@ static struct mutex routing_lock;
 
 static struct cal_type_data *cal_data;
 
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-022 */
+static int a2dp_mode = 0;
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 22-022 */
+
 static int fm_switch_enable;
 static int fm_pcmrx_switch_enable;
 static int lsm_mux_slim_port;
@@ -6734,6 +6738,28 @@ int msm_routing_check_backend_enabled(int fedai_id)
 	}
 	return 0;
 }
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-022 */
+void msm_codec_set_a2dp_mode(int mode){
+	mutex_lock(&routing_lock);
+	a2dp_mode = mode;
+	mutex_unlock(&routing_lock);
+}
+EXPORT_SYMBOL_GPL(msm_codec_set_a2dp_mode);
+
+int msm_routing_get_is_music_play(void)
+{
+	int music_type = 0;
+
+	mutex_lock(&routing_lock);
+	if (a2dp_mode)
+		music_type |= 1 << 3;
+	mutex_unlock(&routing_lock);
+
+	return music_type;
+}
+EXPORT_SYMBOL_GPL(msm_routing_get_is_music_play);
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 22-022 */
 
 static int get_cal_path(int path_type)
 {

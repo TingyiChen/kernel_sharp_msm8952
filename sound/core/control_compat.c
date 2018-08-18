@@ -23,6 +23,15 @@
 #include <linux/compat.h>
 #include <linux/slab.h>
 
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+extern int msm_headset_hp_state(void);
+extern int msm_headset_bu_state(void);
+extern int diag_codec_set_bias_mode(int mode);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-022 */
+extern void msm_codec_set_a2dp_mode(int mode);
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 22-022 */
+
 struct snd_ctl_elem_list32 {
 	u32 offset;
 	u32 space;
@@ -90,6 +99,47 @@ struct snd_ctl_elem_info32 {
 	} value;
 	unsigned char reserved[64];
 } __attribute__((packed));
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+static int snd_ctl_hp_state_compat(struct snd_ctl_elem_hp_state __user *_state)
+{
+
+	struct snd_ctl_elem_hp_state state;
+	state.hp_state = msm_headset_hp_state();
+	state.button_state = msm_headset_bu_state();
+
+	if (copy_to_user(_state, &state, sizeof(state)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static int snd_ctl_set_bias_mode_compat(int __user *_state)
+{
+	int mode;
+
+	if(get_user(mode, _state)) {
+		return -EFAULT;
+	}
+	diag_codec_set_bias_mode(mode);
+	return 0;
+}
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-022 */
+static int snd_ctl_set_mode_a2dp(int __user *_state)
+{
+	int mode;
+
+	if(get_user(mode, _state)){
+		return -EFAULT;
+	}
+	msm_codec_set_a2dp_mode(mode);
+
+	return 0;
+}
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 22-022 */
+
 
 static int snd_ctl_elem_info_compat(struct snd_ctl_file *ctl,
 				    struct snd_ctl_elem_info32 __user *data32)
@@ -401,6 +451,9 @@ static inline long snd_ctl_ioctl_compat(struct file *file, unsigned int cmd, uns
 	struct snd_kctl_ioctl *p;
 	void __user *argp = compat_ptr(arg);
 	int err;
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+	int __user *ip = argp;
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
 
 	ctl = file->private_data;
 	if (snd_BUG_ON(!ctl || !ctl->card))
@@ -431,6 +484,17 @@ static inline long snd_ctl_ioctl_compat(struct file *file, unsigned int cmd, uns
 		return snd_ctl_elem_add_compat(ctl, argp, 0);
 	case SNDRV_CTL_IOCTL_ELEM_REPLACE32:
 		return snd_ctl_elem_add_compat(ctl, argp, 1);
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+	case SNDRV_CTL_IOCTL_HP_STATE:
+		return snd_ctl_hp_state_compat(argp);
+	case SNDRV_CTL_IOCTL_SET_BIAS_MODE:
+		return snd_ctl_set_bias_mode_compat(ip);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-022 */
+	case SNDRV_CTL_IOCTL_SET_MODE_A2DP:
+		return snd_ctl_set_mode_a2dp(ip);
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 22-022 */
+
 	}
 
 	down_read(&snd_ioctl_rwsem);
