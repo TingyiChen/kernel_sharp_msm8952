@@ -549,6 +549,10 @@ static void wcd_mbhc_hs_elec_irq(struct wcd_mbhc *mbhc, int irq_type,
 static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+	int ret;
+	const char *lineout_report = NULL;
+#endif
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
@@ -690,9 +694,26 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
 			 jack_type, mbhc->hph_status);
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+		ret = of_property_read_string(mbhc->codec->card->dev->of_node,"sharp,jack-lineout-report",&lineout_report);
+		if(!ret && !strcmp(lineout_report, "notsend")){
+			if(mbhc->hph_status == SND_JACK_LINEOUT){
+				wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
+						    (SND_JACK_UNSUPPORTED | SND_JACK_MECHANICAL),
+						    WCD_MBHC_JACK_MASK);
+			} else {
+				wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
+						    (mbhc->hph_status | SND_JACK_MECHANICAL),
+						    WCD_MBHC_JACK_MASK);
+			}
+		} else {
+#endif
 		wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
 				    (mbhc->hph_status | SND_JACK_MECHANICAL),
 				    WCD_MBHC_JACK_MASK);
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+		}
+#endif
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
@@ -1123,12 +1144,20 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	bool micbias1 = false;
 	int ret = 0;
 	int rc, spl_hs_count = 0;
-
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+	int headphone_reported = 0;
+	const char *detect_port = NULL;
+#endif
 	pr_debug("%s: enter\n", __func__);
 
 	mbhc = container_of(work, struct wcd_mbhc, correct_plug_swch);
 	codec = mbhc->codec;
-
+#ifdef CONFIG_SH_AUDIO_DRIVER
+	ret = of_property_read_string(codec->card->dev->of_node,"sharp,jack-detect-port",&detect_port);
+	if(!ret && !strcmp(detect_port, "gnd")){
+		msleep(200);
+	}
+#endif
 	/*
 	 * Enable micbias/pullup for detection in correct work.
 	 * This work will get scheduled from detect_plug_type which
@@ -1174,12 +1203,29 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 
 	pr_debug("%s: Valid plug found, plug type is %d\n",
 			 __func__, plug_type);
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+	if(!ret && !strcmp(detect_port, "gnd")){
+		if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
+			WCD_MBHC_RSC_LOCK(mbhc);
+			wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+			WCD_MBHC_RSC_UNLOCK(mbhc);
+		}
+	} else {
+#endif
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+		if (plug_type == MBHC_PLUG_TYPE_HEADSET ||
+		    plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
+#else
 	if ((plug_type == MBHC_PLUG_TYPE_HEADSET ||
 	     plug_type == MBHC_PLUG_TYPE_HEADPHONE) &&
 	    (!wcd_swch_level_remove(mbhc))) {
+#endif
 		WCD_MBHC_RSC_LOCK(mbhc);
 		wcd_mbhc_find_plug_and_report(mbhc, plug_type);
 		WCD_MBHC_RSC_UNLOCK(mbhc);
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+	}
+#endif
 	}
 
 correct_plug_type:
@@ -1326,6 +1372,21 @@ correct_plug_type:
 			}
 			wrk_complete = false;
 		}
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* A-005 */
+		ret = of_property_read_string(codec->card->dev->of_node,"sharp,jack-detect-port",&detect_port);
+		if(!ret && !strcmp(detect_port, "gnd")){
+			if (!wrk_complete && mbhc->btn_press_intr) {
+				if(headphone_reported == 0){
+					plug_type = MBHC_PLUG_TYPE_HEADPHONE;
+					WCD_MBHC_RSC_LOCK(mbhc);
+					wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+					WCD_MBHC_RSC_UNLOCK(mbhc);
+					headphone_reported++;
+				}
+			}
+		}
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* A-005 */
 	}
 	if (!wrk_complete && mbhc->btn_press_intr) {
 		pr_debug("%s: Can be slow insertion of headphone\n", __func__);
@@ -1879,6 +1940,11 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 	/* send event to sw intr handler*/
 	mbhc->is_btn_press = true;
 	wcd_cancel_btn_work(mbhc);
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 21-080 */
+	msleep(150);
+#endif /* CONFIG_SH_AUDIO_DRIVER *//* 21-080 */
+
 	if (wcd_swch_level_remove(mbhc)) {
 		pr_debug("%s: Switch level is low ", __func__);
 		goto done;

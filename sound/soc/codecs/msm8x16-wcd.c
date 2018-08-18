@@ -45,6 +45,10 @@
 #include "msm8916-wcd-irq.h"
 #include "msm8x16_wcd_registers.h"
 
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-035 */
+#include <sharp/shub_driver.h>
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-035 */
+
 #define MSM8X16_WCD_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000)
 #define MSM8X16_WCD_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
@@ -113,6 +117,18 @@ enum {
 #define VOLTAGE_CONVERTER(value, min_value, step_size)\
 	((value - min_value)/step_size);
 
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+#define DIAG_DEBUGMODE_MSK	0x01
+#define DIAG_DEBUGMODE_ON	0x01
+#define DIAG_DEBUGMODE_OFF	0x00
+#define DIAG_MICBIAS_MSK	0x02
+#define DIAG_MICBIAS_ON		0x02
+#define DIAG_MICBIAS_OFF	0x00
+#define DIAG_CODECSTOP_MSK	0x04
+#define DIAG_CODECSTOP_ON	0x04
+#define DIAG_CODECSTOP_OFF	0x00
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
+
 enum {
 	AIF1_PB = 0,
 	AIF1_CAP,
@@ -168,6 +184,58 @@ static struct hpf_work tx_hpf_work[NUM_DECIMATORS];
 static char on_demand_supply_name[][MAX_ON_DEMAND_SUPPLY_NAME_LENGTH] = {
 	"cdc-vdd-mic-bias",
 };
+
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-005 */
+struct msm8x16_wcd_priv *diag_codec_switch;
+static int bias_mode_for_testmode = 0;
+static bool irq_mode_for_testmode  = true;
+
+int tomtom_codec_get_bias_mode(void)
+{
+	return bias_mode_for_testmode;
+}
+EXPORT_SYMBOL_GPL(tomtom_codec_get_bias_mode);
+
+void diag_codec_set_bias_mode(int mode)
+{
+	struct wcd_mbhc mbhc = diag_codec_switch->mbhc;
+	bias_mode_for_testmode = mode;
+
+	if(irq_mode_for_testmode){
+		if((bias_mode_for_testmode & DIAG_CODECSTOP_MSK) == DIAG_CODECSTOP_ON ){
+			wcd9xxx_spmi_disable_irq(mbhc.intr_ids->mbhc_sw_intr);
+			wcd9xxx_spmi_disable_irq(mbhc.intr_ids->mbhc_hs_rem_intr);
+			wcd9xxx_spmi_disable_irq(mbhc.intr_ids->mbhc_hs_ins_intr);
+			irq_mode_for_testmode = false;
+		}
+	}else{
+		 if((bias_mode_for_testmode & DIAG_CODECSTOP_MSK) == DIAG_CODECSTOP_OFF){
+			wcd9xxx_spmi_enable_irq(mbhc.intr_ids->mbhc_sw_intr);
+			wcd9xxx_spmi_enable_irq(mbhc.intr_ids->mbhc_hs_rem_intr);
+			wcd9xxx_spmi_enable_irq(mbhc.intr_ids->mbhc_hs_ins_intr);
+			irq_mode_for_testmode = true;
+		}
+	}
+	return;
+}
+EXPORT_SYMBOL_GPL(diag_codec_set_bias_mode);
+
+int msm_headset_hp_state(void)
+{
+	struct wcd_mbhc mbhc = diag_codec_switch->mbhc;
+
+	return mbhc.headset_jack.status;
+}
+EXPORT_SYMBOL_GPL(msm_headset_hp_state);
+
+int msm_headset_bu_state(void)
+{
+	struct wcd_mbhc mbhc = diag_codec_switch->mbhc;
+
+	return mbhc.button_jack.status;
+}
+EXPORT_SYMBOL_GPL(msm_headset_bu_state);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-005 */
 
 static unsigned long rx_digital_gain_reg[] = {
 	MSM8X16_WCD_A_CDC_RX1_VOL_CTL_B2_CTL,
@@ -3145,6 +3213,10 @@ static int msm8x16_wcd_codec_enable_spk_pa(struct snd_soc_dapm_widget *w,
 				MSM8X16_WCD_A_ANALOG_RX_EAR_CTL, 0x01, 0x01);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-035 */
+		dev_dbg(w->codec->dev, "%s Stop pedometer function\n", __func__);
+		shub_api_stop_pedometer_func(SHUB_STOP_PED_TYPE_SPE);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-035 */
 		usleep_range(CODEC_DELAY_1_MS, CODEC_DELAY_1_1_MS);
 		switch (msm8x16_wcd->boost_option) {
 		case BOOST_SWITCH:
@@ -3180,6 +3252,10 @@ static int msm8x16_wcd_codec_enable_spk_pa(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_CDC_RX3_B6_CTL, 0x01, 0x01);
 		msm8x16_wcd->mute_mask |= SPKR_PA_DISABLE;
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-035 */
+		dev_dbg(w->codec->dev, "%s Restart pedometer function\n", __func__);
+		shub_api_restart_pedometer_func(SHUB_STOP_PED_TYPE_SPE);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-035 */
 		/*
 		 * Add 1 ms sleep for the mute to take effect
 		 */

@@ -1677,7 +1677,11 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	}
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8952_wcd_cal)->X) = (Y))
+#ifdef CONFIG_SH_AUDIO_DRIVER /* 22-073 */
+	S(v_hs_max, 1600);
+#else
 	S(v_hs_max, 1500);
+#endif /* CONFIG_SH_AUDIO_DRIVER */ /* 22-073 */
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8952_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
