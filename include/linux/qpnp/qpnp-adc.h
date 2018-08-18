@@ -2173,5 +2173,7 @@ static inline struct qpnp_adc_tm_chip *qpnp_get_adc_tm(struct device *dev,
 							const char *name)
 { return ERR_PTR(-ENXIO); }
 #endif
-
+#ifdef CONFIG_BATTERY_SH
+int qpnp_smb_vdir_chg_pin_enable(bool enable);
+#endif /* CONFIG_BATTERY_SH */
 #endif
