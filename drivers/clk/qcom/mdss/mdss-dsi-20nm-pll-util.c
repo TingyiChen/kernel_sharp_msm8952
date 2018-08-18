@@ -1037,6 +1037,9 @@ int pll_20nm_vco_enable_seq(struct mdss_pll_resources *dsi_pll_res)
 	 * locking or when the vco rate is changed. Otherwise, just
 	 * use stored codes and bypass caliberation.
 	 */
+#ifdef CONFIG_SHDISP /* CUST_ID_00059 */
+	dsi_pll_res->is_init_locked = false;
+#endif /* CONFIG_SHDISP */
 	if (!dsi_pll_res->is_init_locked || (dsi_pll_res->vco_locking_rate !=
 			dsi_pll_res->vco_current_rate)) {
 		rc = pll_20nm_vco_init_lock(dsi_pll_res);
