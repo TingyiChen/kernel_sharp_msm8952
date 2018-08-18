@@ -91,6 +91,9 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
+#ifdef CONFIG_SHDISP /* CUST_ID_00016 */
+	BL_EXT,
+#endif /* CONFIG_SHDISP */
 	UNKNOWN_CTRL,
 };
 
@@ -503,6 +506,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct workqueue_struct *workq;
 	struct delayed_work dba_work;
 	bool update_phy_timing; /* flag to recalculate PHY timings */
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00055 */
+	int dsi_cmd_clk_cnt;
+#endif /* CONFIG_SHDISP */
 };
 
 struct dsi_status_data {

@@ -36,6 +36,12 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
+#ifdef CONFIG_SHDISP /* CUST_ID_00054 */
+#include "mdss_shdisp.h"
+#endif /* CONFIG_SHDISP */
+#ifdef	CONFIG_SHDISP /* CUST_ID_00058 */
+static int pan_displayed;
+#endif /* CONFIG_SHDISP */
 
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
@@ -54,6 +60,13 @@
 #define MAX_CURSOR_IMG_WIDTH 512
 #define MAX_CURSOR_IMG_HEIGHT 512
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00065 */
+#define DFPS_BKL_AUTO_HIGH_THRESH (130)
+#define DFPS_BKL_FIXED_HIGH_THRESH (144)
+#define DFPS_IDLE_FPS (30)
+#define DFPS_VIDEO_FPS (30)
+#endif /* CONFIG_SHDISP */
+
 static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd);
@@ -62,6 +75,22 @@ static void __vsync_retire_signal(struct msm_fb_data_type *mfd, int val);
 static int __vsync_set_vsync_handler(struct msm_fb_data_type *mfd);
 static int mdss_mdp_update_panel_info(struct msm_fb_data_type *mfd,
 		int mode, int dest_ctrl);
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+static int base_fps_low_mode = MDSS_BASE_FPS_DEFAULT;
+static int mdss_fb_change_base_fps_low(struct msm_fb_data_type *mfd, unsigned long *argp);
+static int mdss_fb_base_fps_low_mode(void);
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00060 */
+static int dynamic_fps_led_on = 0;
+static int dynamic_fps_led_val = 0;
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00064 */
+static int mdss_fb_set_dfps_pause(struct msm_fb_data_type *mfd, int status);
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00069 */
+extern void mdss_shdisp_pre_blank_notify(void);
+#endif /* CONFIG_SHDISP */
 
 static inline bool is_ov_right_blend(struct mdp_rect *left_blend,
 	struct mdp_rect *right_blend, u32 left_lm_w)
@@ -1986,6 +2015,9 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	int sd_in_pipe = 0;
 	bool need_cleanup = false;
 	struct mdss_mdp_commit_cb commit_cb;
+#ifdef CONFIG_SHDISP /* CUST_ID_00063 */
+	int trans_ret;
+#endif /* CONFIG_SHDISP */
 
 	if (!ctl)
 		return -ENODEV;
@@ -2071,6 +2103,10 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 
 	mdp5_data->kickoff_released = false;
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00063 */
+	mutex_lock(&mdp5_data->trans_ctrl_lock);
+	trans_ret = mdss_shdisp_video_transfer_ctrl_kickoff(mfd, false);
+#endif /* CONFIG_SHDISP */
 	if (mfd->panel.type == WRITEBACK_PANEL) {
 		ATRACE_BEGIN("wb_kickoff");
 		if (!need_cleanup) {
@@ -2094,6 +2130,14 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		}
 		ATRACE_END("display_commit");
 	}
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00063 */
+	if (trans_ret == 0) {
+		trans_ret = mdss_shdisp_video_transfer_ctrl_kickoff(mfd, true);
+	}
+	mdss_shdisp_video_transfer_ctrl_set_flg(mfd, false);
+	mutex_unlock(&mdp5_data->trans_ctrl_lock);
+#endif /* CONFIG_SHDISP */
 
 	if ((!need_cleanup) && (!mdp5_data->kickoff_released))
 		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_CTX_DONE);
@@ -2404,6 +2448,14 @@ static int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 		mdp5_data->borderfill_enable = true;
 		ret = mdss_mdp_overlay_free_fb_pipe(mfd);
 	} else {
+#ifdef	CONFIG_SHDISP /* CUST_ID_00058 */
+		if (unlikely(pan_displayed)) {
+			if (mfd->index == 0) {
+				mdss_mdp_overlay_free_fb_pipe(mfd);
+				pan_displayed = 0;
+			}
+		}
+#endif /* CONFIG_SHDISP */
 		ret = mdss_mdp_overlay_queue(mfd, req);
 	}
 
@@ -2650,6 +2702,11 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 
 	mdss_iommu_ctrl(0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+#ifdef	CONFIG_SHDISP /* CUST_ID_00058 */
+	if (mfd->index == 0) {
+		pan_displayed = 1;
+	}
+#endif /* CONFIG_SHDISP */
 	return;
 
 pan_display_error:
@@ -2697,6 +2754,9 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 {
 	struct msm_fb_data_type *mfd = NULL;
 	struct mdss_overlay_private *mdp5_data = NULL;
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+	int fps_low_mode = MDSS_BASE_FPS_DEFAULT;
+#endif /* CONFIG_SHDISP */
 
 	if (!ctl) {
 		pr_err("ctl is NULL\n");
@@ -2716,6 +2776,19 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 	}
 
 	pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+	mdp5_data->fpslow_count++;
+
+	fps_low_mode = mdss_fb_base_fps_low_mode();
+	fps_low_mode = (fps_low_mode > 0) ? fps_low_mode : MDSS_BASE_FPS_DEFAULT;
+	if ((mdss_panel_get_framerate(&(ctl->panel_data->panel_info)) / fps_low_mode) > mdp5_data->fpslow_count) {
+		pr_debug("%s: return....\n", __func__);
+		return;
+	}
+
+	mdp5_data->fpslow_count = 0;
+#endif /* CONFIG_SHDISP */
 
 	mdp5_data->vsync_time = t;
 	sysfs_notify_dirent(mdp5_data->vsync_event_sd);
@@ -2760,6 +2833,79 @@ exit:
 	return rc;
 }
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00060 */
+int mdss_mdp_dynamic_fps_led_ctl(int onoff, int dfps)
+{
+	char r, g, b;
+
+	if (!dynamic_fps_led_on) {
+		return 0;
+	}
+
+	if (!onoff) {
+		r = 0;
+		g = 0;
+		b = 0;
+	} else {
+		pr_debug("DYNAMIC FPS_LED: fps %d->%d\n", dynamic_fps_led_val, dfps);
+		if (dynamic_fps_led_val == dfps) {
+			return 0;
+		}
+
+		switch (dfps) {
+		case 60:
+			pr_debug("DYNAMIC FPS_LED: 60fps\n");
+			r = 1;
+			g = 0;
+			b = 0;
+			break;
+		case 45:
+			pr_debug("DYNAMIC FPS_LED: 45fps\n");
+			r = 0;
+			g = 1;
+			b = 1;
+			break;
+		case 30:
+			pr_debug("DYNAMIC FPS_LED: 30fps\n");
+			r = 1;
+			g = 1;
+			b = 0;
+			break;
+		default:
+			pr_debug("DYNAMIC FPS_LED: other(%dfps)\n", dfps);
+			return -EINVAL;
+		}
+	}
+
+	pr_debug("DYNAMIC FPS_LED: RGBLED=%d,%d,%d\n", r, g, b);
+	mdss_shdisp_tri_led_set_color(r, g, b);
+	dynamic_fps_led_val = dfps;
+
+	return 0;
+}
+
+int mdss_mdp_dynamic_fps_led(int onoff, struct mdss_mdp_ctl *ctl)
+{
+	int ret;
+	int fps = mdss_panel_get_framerate(&(ctl->panel_data->panel_info));
+
+	if (dynamic_fps_led_on == onoff) {
+		return 0;
+	}
+
+	if (onoff) {
+		dynamic_fps_led_on = onoff;
+		ret = mdss_mdp_dynamic_fps_led_ctl(onoff, fps);
+	}
+	else {
+		ret = mdss_mdp_dynamic_fps_led_ctl(onoff, 0);
+		dynamic_fps_led_on = onoff;
+	}
+
+	return ret;
+}
+#endif /* CONFIG_SHDISP */
+
 static ssize_t dynamic_fps_sysfs_rda_dfps(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2779,10 +2925,17 @@ static ssize_t dynamic_fps_sysfs_rda_dfps(struct device *dev,
 	}
 
 	mutex_lock(&mdp5_data->dfps_lock);
+#ifndef CONFIG_SHDISP /* CUST_ID_00064 */ /* CUST_ID_00065 */
 	ret = snprintf(buf, PAGE_SIZE, "%d\n",
 		       pdata->panel_info.mipi.frame_rate);
 	pr_debug("%s: '%d'\n", __func__,
 		pdata->panel_info.mipi.frame_rate);
+#else /* CONFIG_SHDISP */
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+		       mdp5_data->dfps_req_rate);
+	pr_debug("%s: '%d'\n", __func__,
+		mdp5_data->dfps_req_rate);
+#endif /* CONFIG_SHDISP */
 	mutex_unlock(&mdp5_data->dfps_lock);
 
 	return ret;
@@ -2829,6 +2982,34 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 				pdata->panel_info.max_fps);
 		dfps = pdata->panel_info.max_fps;
 	}
+#ifdef CONFIG_SHDISP /* CUST_ID_00064 */
+	if(mdp5_data->dfps_pause) {
+		mdp5_data->dfps_req_rate = dfps;
+		mutex_unlock(&mdp5_data->dfps_lock);
+		return count;
+	}
+#endif /* CONFIG_SHDISP */
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00065 */
+	mdp5_data->dfps_req_rate = dfps;
+
+	if (((mdss_shdisp_bdic_bkl_get_fixed() == false) && (mdss_shdisp_bdic_bkl_get_param() >= DFPS_BKL_AUTO_HIGH_THRESH)) ||
+		((mdss_shdisp_bdic_bkl_get_fixed() == true) && (mdss_shdisp_bdic_bkl_get_param() >= DFPS_BKL_FIXED_HIGH_THRESH))
+		) {
+		dfps = pdata->panel_info.max_fps;
+	} else {
+		if (dfps == pdata->panel_info.min_fps) {
+			dfps = DFPS_IDLE_FPS;
+		} else if (dfps < DFPS_VIDEO_FPS) {
+			dfps = DFPS_VIDEO_FPS;
+		}
+	}
+	pr_debug("%s: FPS bf=%d af=%d\n", __func__, mdp5_data->dfps_req_rate, dfps);
+#endif /* CONFIG_SHDISP */
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00060 */
+	mdss_mdp_dynamic_fps_led_ctl(true, dfps);
+#endif /* CONFIG_SHDISP */
 	pdata->panel_info.new_fps = dfps;
 
 	mutex_unlock(&mdp5_data->dfps_lock);
@@ -3851,6 +4032,15 @@ static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 					(struct mdp_igc_lut_data *)
 					&mdp_pp.data.lut_cfg_data.data,
 					&copyback, copy_from_kernel);
+#ifdef CONFIG_SHDISP /* CUST_ID_00063 */
+			if ((mdp_pp.data.lut_cfg_data.data.igc_lut_data.ops & (MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE)) == (MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE)) {
+				struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+
+				mutex_lock(&mdp5_data->trans_ctrl_lock);
+				mdss_shdisp_video_transfer_ctrl_set_flg(mfd, true);
+				mutex_unlock(&mdp5_data->trans_ctrl_lock);
+			}
+#endif /* CONFIG_SHDISP */
 			break;
 
 		case mdp_lut_pgc:
@@ -4566,6 +4756,55 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 		if (!ret)
 			ret = copy_to_user(argp, &metadata, sizeof(metadata));
 		break;
+#ifdef CONFIG_SHDISP /* CUST_ID_00042 */
+	case MSMFB_SPECIFIED_IGC_LUT:
+	{
+		struct mdp_specified_igc_lut_data config;
+		ret = copy_from_user(&config, argp, sizeof(config));
+		if (ret) {
+			pr_err("MSMFB_SPECIFY_IGC_LUT failed (%d)\n", ret);
+			return ret;
+		}
+		ret = mdss_mdp_specified_igc_lut_config(&config);
+		if (!ret) {
+			ret = copy_to_user(argp, &config, sizeof(config));
+		}
+		break;
+	}
+	case MSMFB_SPECIFIED_ARGC_LUT:
+	{
+		struct mdp_specified_pgc_lut_data config;
+		ret = copy_from_user(&config, argp, sizeof(config));
+		if (ret) {
+			pr_err("MSMFB_SPECIFIED_ARGC_LUT failed (%d)\n", ret);
+			return ret;
+		}
+		ret = mdss_mdp_specified_argc_lut_config(&config);
+		if (!ret) {
+			ret = copy_to_user(argp, &config, sizeof(config));
+		}
+		break;
+	}
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+	case MSMFB_CHANGE_BASE_FPS_LOW:
+		ret = mdss_fb_change_base_fps_low(mfd, argp);
+		break;
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00064 */
+	case MSMFB_SET_DFPS_PAUSE:
+	{
+		int status;
+
+		ret = copy_from_user(&status, argp, sizeof(int));
+		if (ret) {
+			pr_err("%s:ioctl failed\n", __func__);
+			return ret;
+		}
+		ret = mdss_fb_set_dfps_pause(mfd, status);
+		break;
+	}
+#endif /* CONFIG_SHDISP */
 	case MSMFB_OVERLAY_PREPARE:
 		ret = __handle_ioctl_overlay_prepare(mfd, argp);
 		break;
@@ -4736,6 +4975,13 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		}
 		return 0;
 	}
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00069 */
+	mdss_shdisp_pre_blank_notify();
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+	mdp5_data->fpslow_count = 0;
+#endif /* CONFIG_SHDISP */
 
 	/*
 	 * Keep a reference to the runtime pm until the overlay is turned
@@ -5231,6 +5477,9 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	mutex_init(&mdp5_data->list_lock);
 	mutex_init(&mdp5_data->ov_lock);
 	mutex_init(&mdp5_data->dfps_lock);
+#ifdef CONFIG_SHDISP /* CUST_ID_00063 */
+	mutex_init(&mdp5_data->trans_ctrl_lock);
+#endif /* CONFIG_SHDISP */
 	mdp5_data->hw_refresh = true;
 	mdp5_data->overlay_play_enable = true;
 	mdp5_data->cursor_ndx[CURSOR_PIPE_LEFT] = MSMFB_NEW_REQUEST;
@@ -5364,3 +5613,63 @@ static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd)
 
 	return rc;
 }
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00057 */
+static int mdss_fb_change_base_fps_low(struct msm_fb_data_type *mfd, unsigned long *argp)
+{
+	int ret, notify;
+
+	ret = copy_from_user(&notify, argp, sizeof(int));
+	if (ret) {
+		pr_err("%s:ioctl failed\n", __func__);
+		return ret;
+	}
+
+	if (notify <= 0) {
+		pr_err("%s:notify invalid(%d)\n", __func__, notify);
+		return -EINVAL;
+    }
+
+	base_fps_low_mode = notify;
+
+	return 0;
+}
+
+static int mdss_fb_base_fps_low_mode(void)
+{
+	return base_fps_low_mode;
+}
+#endif /* CONFIG_SHDISP */
+#ifdef CONFIG_SHDISP /* CUST_ID_00064 */
+static int mdss_fb_set_dfps_pause(struct msm_fb_data_type *mfd, int status)
+{
+	struct mdss_panel_data *pdata;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+
+	if ((status != true) && (status != false)) {
+		pr_err("%s:invalid status(%d)\n", __func__, status);
+		return -EPERM;
+	}
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected for fb%d\n", mfd->index);
+		return -ENODEV;
+	}
+
+	mutex_lock(&mdp5_data->dfps_lock);
+
+	mdp5_data->dfps_pause = status;
+	if (status) {
+		pdata->panel_info.new_fps = MDSS_BASE_FPS_60;
+		mdp5_data->dfps_req_rate = pdata->panel_info.new_fps;
+#ifdef CONFIG_SHDISP /* CUST_ID_00060 */
+		mdss_mdp_dynamic_fps_led_ctl(true, pdata->panel_info.new_fps);
+#endif /* CONFIG_SHDISP */
+	}
+
+	mutex_unlock(&mdp5_data->dfps_lock);
+
+	return 0;
+}
+#endif /* CONFIG_SHDISP */

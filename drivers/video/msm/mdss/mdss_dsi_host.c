@@ -28,6 +28,11 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00036 */
+#include "mdss_diag.h"
+#include "mdss_shdisp.h"
+#endif /* CONFIG_SHDISP */
+
 #define VSYNC_PERIOD 17
 #define DMA_TX_TIMEOUT 200
 #define DMA_TPG_FIFO_LEN 64
@@ -76,6 +81,78 @@ struct mdss_dsi_event {
 static struct mdss_dsi_event dsi_event;
 
 static int dsi_event_thread(void *data);
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00055 */
+int mdss_dsi_cmd_bus_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, bool enable)
+{
+	int rc = 0;
+	bool change = false;
+
+	if (!ctrl) {
+		pr_err("invalid ctrl.\n");
+		return -EINVAL;
+	}
+
+	pr_debug("%s: CALL enable=%d\n", __func__, enable);
+
+	if (enable) {
+		ctrl->dsi_cmd_clk_cnt++;
+		if (ctrl->dsi_cmd_clk_cnt == 1) {
+			change = true;
+		}
+	} else {
+		if (ctrl->dsi_cmd_clk_cnt > 0) {
+			ctrl->dsi_cmd_clk_cnt--;
+			if (ctrl->dsi_cmd_clk_cnt == 0) {
+				change = true;
+			}
+		} else {
+			WARN(1, "%s: unbalanced disable for dsi cmd clk.\n", __func__);
+		}
+	}
+
+	if (change) {
+		if (enable) {
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+
+			if (ctrl->mdss_util->bus_bandwidth_ctrl) {
+				ctrl->mdss_util->bus_bandwidth_ctrl(1);
+			}
+
+			if (ctrl->mdss_util->bus_scale_set_quota) {
+				ctrl->mdss_util->bus_scale_set_quota(MDSS_DSI_RT, SZ_1M, SZ_1M);\
+			}
+
+			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
+
+			if (ctrl->mdss_util->iommu_ctrl) {
+				rc = ctrl->mdss_util->iommu_ctrl(1);
+				if (IS_ERR_VALUE(rc)) {
+					pr_err("IOMMU attach failed\n");
+				}
+			}
+		} else {
+			if (ctrl->mdss_util->iommu_ctrl) {
+				ctrl->mdss_util->iommu_ctrl(0);
+			}
+
+			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
+
+			if (ctrl->mdss_util->bus_scale_set_quota) {
+				ctrl->mdss_util->bus_scale_set_quota(MDSS_DSI_RT, 0, 0);
+			}
+
+			if (ctrl->mdss_util->bus_bandwidth_ctrl) {
+				ctrl->mdss_util->bus_bandwidth_ctrl(0);
+			}
+
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+		}
+	}
+
+	return rc;
+}
+#endif /* CONFIG_SHDISP */
 
 void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 			struct mdss_dsi_ctrl_pdata *ctrl)
@@ -1166,8 +1243,13 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	return ret;
 }
 
+#ifndef CONFIG_SHDISP /* CUST_ID_00062 */
 static void mdss_dsi_dsc_config(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dsc_desc *dsc)
+#else	/* CONFIG_SHDISP */
+void mdss_dsi_dsc_config(struct mdss_dsi_ctrl_pdata *ctrl,
+				struct dsc_desc *dsc)
+#endif	/* CONFIG_SHDISP */
 {
 	u32 data;
 
@@ -2396,7 +2478,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	struct dcs_cmd_req *req;
 	struct mdss_panel_info *pinfo;
 	struct mdss_rect *roi = NULL;
+#ifndef CONFIG_SHDISP /* CUST_ID_00055 */
 	bool use_iommu = false;
+#endif /* CONFIG_SHDISP */
 	int ret = -EINVAL;
 	int rc = 0;
 	bool hs_req = false;
@@ -2472,6 +2556,13 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 
 	if (!(req->flags & CMD_REQ_DMA_TPG)) {
+#ifdef CONFIG_SHDISP /* CUST_ID_00055 */
+		rc = mdss_dsi_cmd_bus_ctrl(ctrl, true);
+		if (IS_ERR_VALUE(rc)) {
+			mutex_unlock(&ctrl->cmd_mutex);
+			return rc;
+		}
+#else  /* CONFIG_SHDISP */
 		if (ctrl->mdss_util->bus_bandwidth_ctrl)
 			ctrl->mdss_util->bus_bandwidth_ctrl(1);
 
@@ -2488,6 +2579,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 			}
 			use_iommu = true;
 		}
+#endif /* CONFIG_SHDISP */
 	}
 
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
@@ -2515,6 +2607,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		mdss_dsi_set_tx_power_mode(1, &ctrl->panel_data);
 
 	if (!(req->flags & CMD_REQ_DMA_TPG)) {
+#ifdef CONFIG_SHDISP /* CUST_ID_00055 */
+		mdss_dsi_cmd_bus_ctrl(ctrl, false);
+#else  /* CONFIG_SHDISP */
 		if (use_iommu)
 			ctrl->mdss_util->iommu_ctrl(0);
 
@@ -2522,6 +2617,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 			ctrl->mdss_util->bus_scale_set_quota(MDSS_DSI_RT, 0, 0);
 		if (ctrl->mdss_util->bus_bandwidth_ctrl)
 			ctrl->mdss_util->bus_bandwidth_ctrl(0);
+#endif /* CONFIG_SHDISP */
 	}
 
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
@@ -2847,7 +2943,13 @@ void mdss_dsi_error(struct mdss_dsi_ctrl_pdata *ctrl)
 	/* DSI_ERR_INT_MASK0 */
 	mdss_dsi_clk_status(ctrl);	/* Mask0, 0x10000000 */
 	mdss_dsi_fifo_status(ctrl);	/* mask0, 0x133d00 */
+#ifdef CONFIG_SHDISP  /* CUST_ID_00036 */
+	if (mdss_diag_mipi_check_get_exec_state() == false) {
+		mdss_dsi_ack_err_status(ctrl);	/* mask0, 0x01f */
+	}
+#else  /* CONFIG_SHDISP */
 	mdss_dsi_ack_err_status(ctrl);	/* mask0, 0x01f */
+#endif /* CONFIG_SHDISP */
 	mdss_dsi_timeout_status(ctrl);	/* mask0, 0x0e0 */
 	mdss_dsi_status(ctrl);		/* mask0, 0xc0100 */
 	mdss_dsi_dln0_phy_err(ctrl, true);	/* mask0, 0x3e00000 */
@@ -2946,3 +3048,37 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 
 	return IRQ_HANDLED;
 }
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00023 */
+void mdss_dsi_hs_clk_lane_enable(bool enable)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct mdss_dsi_ctrl_pdata *sctrl;
+
+	pr_debug("%s: in enable=%d\n", __func__, enable);
+
+	ctrl = mdss_dsi_get_ctrl_clk_master();
+	sctrl = mdss_dsi_get_ctrl_clk_slave();
+
+	if (!ctrl) {
+		pr_err("%s: ctrl is NULL.\n", __func__);
+		return;
+	}
+
+	pr_debug("%s: ctrl=%p sctrl=%p\n", __func__, ctrl, sctrl);
+
+	if (enable) {
+		mdss_dsi_start_hs_clk_lane(ctrl);
+		if (sctrl) {
+			mdss_dsi_start_hs_clk_lane(sctrl);
+		}
+	} else {
+		mdss_dsi_stop_hs_clk_lane(ctrl);
+		if (sctrl) {
+			mdss_dsi_stop_hs_clk_lane(sctrl);
+		}
+	}
+
+	pr_debug("%s: out\n", __func__);
+}
+#endif /* CONFIG_SHDISP */
