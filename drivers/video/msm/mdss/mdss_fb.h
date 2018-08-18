@@ -225,10 +225,26 @@ struct msm_mdp_interface {
 };
 
 #define IS_CALIB_MODE_BL(mfd) (((mfd)->calib_mode) & MDSS_CALIB_MODE_BL)
+#if defined(CONFIG_SHDISP) && !defined(CONFIG_SHDISP_BDIC_71Y)/* CUST_ID_00019 */
+static const long mdss_bright_to_bl_tbl[] = {
+	2796,
+	-251,
+	30100,
+	570400
+};
+
+#define MDSS_BRIGHT_TO_BL(out, v, bl_max, max_bright) \
+			out = mdss_brightness_to_bl(v, bl_max)
+#else /* CONFIG_SHDISP */
 #define MDSS_BRIGHT_TO_BL(out, v, bl_max, max_bright) do {\
 					out = (2 * (v) * (bl_max) + max_bright)\
 					/ (2 * max_bright);\
 					} while (0)
+#endif /* CONFIG_SHDISP */
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00009 */
+#define MDSS_BRIGHTNASS_DEFAULT (115)
+#endif /* CONFIG_SHDISP */
 
 struct mdss_fb_file_info {
 	struct file *file;
@@ -328,6 +344,9 @@ struct msm_fb_data_type {
 	struct dma_buf *fbmem_buf;
 
 	bool mdss_fb_split_stored;
+#ifdef CONFIG_SHDISP /* CUST_ID_00054 */
+	struct completion panel_state_chg_comp;
+#endif  /* CONFIG_SHDISP */
 
 	u32 wait_for_kickoff;
 	u32 thermal_level;
@@ -418,4 +437,8 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 int mdss_fb_compat_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
 void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
+#ifdef CONFIG_SHDISP /* CUST_ID_00019 */
+u32 mdss_brightness_to_bl(int request, u32 bl_max);
+#endif /* CONFIG_SHDISP */
+
 #endif /* MDSS_FB_H */

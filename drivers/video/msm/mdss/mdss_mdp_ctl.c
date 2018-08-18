@@ -2536,6 +2536,16 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 		ctl->intf_type = MDSS_INTF_DSI;
 		ctl->opmode = MDSS_MDP_CTL_OP_VIDEO_MODE;
 		ctl->ops.start_fnc = mdss_mdp_video_start;
+#ifdef CONFIG_SHDISP /* CUST_ID_00043 */
+		if (pdata->panel_info.pdest == DISPLAY_1) {
+			ret = mdss_mdp_pp_argc_init();
+			if (ret)
+				pr_err("Unable to config ARGC LUT data");
+			ret = mdss_mdp_pp_igc_init();
+			if (ret)
+				pr_err("Unable to config IGC LUT data");
+		}
+#endif /* CONFIG_SHDISP */
 		break;
 	case MIPI_CMD_PANEL:
 		if (pdata->panel_info.pdest == DISPLAY_1)
@@ -2547,6 +2557,16 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 		ctl->intf_type = MDSS_INTF_DSI;
 		ctl->opmode = MDSS_MDP_CTL_OP_CMD_MODE;
 		ctl->ops.start_fnc = mdss_mdp_cmd_start;
+#ifdef CONFIG_SHDISP /* CUST_ID_00043 */
+		if (pdata->panel_info.pdest == DISPLAY_1) {
+			ret = mdss_mdp_pp_argc_init();
+			if (ret)
+				pr_err("Unable to config ARGC LUT data");
+			ret = mdss_mdp_pp_igc_init();
+			if (ret)
+				pr_err("Unable to config IGC LUT data");
+		}
+#endif /* CONFIG_SHDISP */
 		break;
 	case DTV_PANEL:
 		ctl->is_video_mode = true;
@@ -4516,3 +4536,11 @@ int mdss_mdp_mixer_handoff(struct mdss_mdp_ctl *ctl, u32 num,
 
 	return rc;
 }
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00036 */
+void mdss_mdp_ctl_perf_update_ctl(struct mdss_mdp_ctl *ctl,
+		int params_changed)
+{
+	mdss_mdp_ctl_perf_update(ctl, params_changed);
+}
+#endif /* CONFIG_SHDISP */

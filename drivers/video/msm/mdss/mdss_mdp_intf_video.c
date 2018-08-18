@@ -23,6 +23,9 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
+#ifdef CONFIG_SHDISP /* CUST_ID_00036 */
+#include "mdss_dsi.h"
+#endif /* CONFIG_SHDISP */
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
@@ -1437,3 +1440,146 @@ void *mdss_mdp_get_intf_base_addr(struct mdss_data_type *mdata,
 	ctx = ((struct mdss_mdp_video_ctx *) mdata->video_intf) + interface_id;
 	return (void *)(ctx->base);
 }
+
+#ifdef CONFIG_SHDISP  /* CUST_ID_00036 */
+void mdss_mdp_video_transfer_ctrl(struct msm_fb_data_type *mfd, int onoff, int commit)
+{
+	struct mdss_overlay_private *mdp5_data = NULL;
+	struct mdss_mdp_ctl *ctl;
+	struct mdss_mdp_video_ctx *ctx;
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata * mdss_dsi_ctrl;
+
+	if (!mfd) {
+		pr_err("invalid mfd\n");
+		return;
+	}
+
+	mdp5_data = mfd_to_mdp5_data(mfd);
+	if (!mdp5_data) {
+		pr_err("invalid mdp5_data\n");
+		return;
+	}
+
+	ctl = mdp5_data->ctl;
+	if (!ctl) {
+		pr_err("invalid ctl\n");
+		return;
+	}
+
+	ctx = (struct mdss_mdp_video_ctx *) ctl->intf_ctx[MASTER_CTX];
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return;
+	}
+
+	pdata = ctl->panel_data;
+	if (!pdata) {
+		pr_err("invalid pdata\n");
+		return;
+	}
+
+	mdss_dsi_ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (onoff) {
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_TIMING_ENGINE_EN, 1);
+		wmb();
+		mdss_dsi_ctrl->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
+		if (commit == true) {
+			ctl->force_screen_state = MDSS_SCREEN_DEFAULT;
+			mdss_mdp_display_commit(ctl, NULL, NULL);
+			mdss_mdp_display_wait4comp(ctl);
+		}
+	} else {
+		if (commit == true) {
+			ctl->force_screen_state = MDSS_SCREEN_FORCE_BLANK;
+			mdss_mdp_display_commit(ctl, NULL, NULL);
+			mdss_mdp_display_wait4comp(ctl);
+		}
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_TIMING_ENGINE_EN, 0);
+		wmb();
+		msleep(20);
+		mdss_dsi_ctrl->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
+		mdss_dsi_controller_cfg(true, pdata);
+	}
+}
+#endif /* CONFIG_SHDISP */
+
+#ifdef CONFIG_SHDISP  /* CUST_ID_00062 */
+int mdss_mdp_video_clkchg_mdp_update(struct mdss_mdp_ctl *ctl)
+{
+	int fetch_start;
+	u32 hsync_period, vsync_period;
+	u32 hsync_start_x, hsync_end_x, display_v_start, display_v_end;
+	u32 display_hctl, hsync_ctl;
+	struct mdss_panel_info *pinfo;
+	struct mdss_mdp_video_ctx *ctx;
+	struct mdss_data_type *mdata;
+
+	pinfo = &ctl->panel_data->panel_info;
+	ctx = ctl->intf_ctx[MASTER_CTX];
+	if (pinfo == NULL) {
+		pr_err("invalid pinfo\n");
+		return -ENODEV;
+	}
+	if (ctx == NULL) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+	mdata = ctl->mdata;
+	if (mdata == NULL) {
+		pr_err("invalid mdata\n");
+		return -ENODEV;
+	}
+	hsync_period = pinfo->lcdc.h_pulse_width + pinfo->lcdc.h_back_porch +
+			pinfo->xres + pinfo->lcdc.xres_pad + pinfo->lcdc.h_front_porch;
+	vsync_period = pinfo->lcdc.v_pulse_width + pinfo->lcdc.v_back_porch +
+			pinfo->yres + pinfo->lcdc.yres_pad + pinfo->lcdc.v_front_porch;
+
+	display_v_start = ((pinfo->lcdc.v_pulse_width + pinfo->lcdc.v_back_porch) *
+			hsync_period) + pinfo->lcdc.hsync_skew;
+	display_v_end = ((vsync_period - pinfo->lcdc.v_front_porch) * hsync_period) +
+			pinfo->lcdc.hsync_skew - 1;
+
+	if (ctx->intf_type == MDSS_INTF_EDP) {
+		display_v_start += pinfo->lcdc.h_pulse_width + pinfo->lcdc.h_back_porch;
+		display_v_end -= pinfo->lcdc.h_front_porch;
+	}
+
+	/* TIMING_2 flush bit on 8939/8976 is BIT 31 */
+	if ((mdata->mdp_rev == MDSS_MDP_HW_REV_108 ||
+		mdata->mdp_rev == MDSS_MDP_HW_REV_111) &&
+				ctx->intf_num == MDSS_MDP_INTF2)
+		ctl->flush_bits |= BIT(31);
+	else
+		ctl->flush_bits |= BIT(31) >>
+			(ctx->intf_num - MDSS_MDP_INTF0);
+
+	hsync_start_x = pinfo->lcdc.h_back_porch + pinfo->lcdc.h_pulse_width;
+	hsync_end_x = hsync_period - pinfo->lcdc.h_front_porch - 1;
+
+	hsync_ctl = (hsync_period << 16) | pinfo->lcdc.h_pulse_width;
+	display_hctl = (hsync_end_x << 16) | hsync_start_x;
+
+
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_HSYNC_CTL, hsync_ctl);
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_VSYNC_PERIOD_F0,
+			vsync_period * hsync_period);
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_VSYNC_PULSE_WIDTH_F0,
+			   pinfo->lcdc.v_pulse_width * hsync_period);
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_DISPLAY_HCTL, display_hctl);
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_DISPLAY_V_START_F0,
+			   display_v_start);
+	mdp_video_write(ctx, MDSS_MDP_REG_INTF_DISPLAY_V_END_F0, display_v_end);
+
+	ctl->prg_fet = mdss_mdp_get_prefetch_lines(ctl);
+	if (ctl->prg_fet) {
+		fetch_start = (vsync_period - ctl->prg_fet) * hsync_period + 1;
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_PROG_FETCH_START, fetch_start);
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_CONFIG, BIT(31));
+	}
+
+	return 0;
+}
+#endif /* CONFIG_SHDISP */

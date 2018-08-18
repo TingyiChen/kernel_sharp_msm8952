@@ -483,6 +483,20 @@ void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_phy_regulator_ctrl(ctrl, true);
 	mdss_dsi_phy_ctrl(ctrl, true);
 }
+#ifdef CONFIG_SHDISP /* CUST_ID_00056 */
+void mdss_dsi_clkchg_phy_config(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	if (!ctrl || !ctrl->shared_data) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	if (ctrl->shared_data->hw_rev == MDSS_DSI_HW_REV_103)
+		mdss_dsi_20nm_phy_config(ctrl);
+	else
+		mdss_dsi_28nm_phy_config(ctrl);
+}
+#endif /* CONFIG_SHDISP */
 
 void mdss_dsi_core_clk_deinit(struct device *dev, struct dsi_shared_data *sdata)
 {

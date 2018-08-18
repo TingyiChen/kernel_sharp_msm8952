@@ -31,6 +31,9 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 #include "mdss_dba_utils.h"
+#ifdef CONFIG_SHDISP /* CUST_ID_00021 */
+#include "mdss_shdisp.h"
+#endif /* CONFIG_SHLCDC_BOARD */
 
 #define XO_CLK_RATE	19200000
 
@@ -283,12 +286,14 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
 		pr_debug("reset disable: pinctrl not enabled\n");
 
+#ifndef CONFIG_SHDISP /* CUST_ID_00011 */
 	ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
 		ctrl_pdata->panel_power_data.num_vreg, 0);
 	if (ret)
 		pr_err("%s: failed to disable vregs for %s\n",
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+#endif /* CONFIG_SHDISP */
 
 end:
 	return ret;
@@ -307,6 +312,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+#ifndef CONFIG_SHDISP /* CUST_ID_00011 */
 	ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
 		ctrl_pdata->panel_power_data.num_vreg, 1);
@@ -315,6 +321,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 		return ret;
 	}
+#endif /* CONFIG_SHDISP */
 
 	/*
 	 * If continuous splash screen feature is enabled, then we need to
@@ -3356,9 +3363,13 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 		}
 	}
 
+#ifndef CONFIG_SHDISP /* CUST_ID_00021 */
 	pinfo->cont_splash_enabled =
 		ctrl_pdata->mdss_util->panel_intf_status(pinfo->pdest,
 		MDSS_PANEL_INTF_DSI) ? true : false;
+#else /* CONFIG_SHDISP */
+	pinfo->cont_splash_enabled = mdss_shdisp_get_disp_status();
+#endif /* CONFIG_SHDISP */
 
 	pr_info("%s: Continuous splash %s\n", __func__,
 		pinfo->cont_splash_enabled ? "enabled" : "disabled");
@@ -3384,6 +3395,9 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 			if (data & BIT(16))
 				ctrl_pdata->burst_mode_enabled = true;
 		}
+#ifdef CONFIG_SHDISP /* CUST_ID_00021 */
+		mdss_shdisp_set_dsi_ctrl(ctrl_pdata);
+#endif /* CONFIG_SHLCDC_BOARD */
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
 	}

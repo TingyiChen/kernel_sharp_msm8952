@@ -24,6 +24,9 @@
 #include "mdss_mdp_rotator.h"
 #include "mdss_fb.h"
 #include "mdss_debug.h"
+#ifdef CONFIG_SHDISP /* CUST_ID_00050 */
+#include "mdss_shdisp.h"
+#endif /* CONFIG_SHDISP */
 
 #define MAX_ROTATOR_PIPE_COUNT 2
 #define PIPE_ACQUIRE_TIMEOUT_IN_MS 400
@@ -1069,7 +1072,13 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 		goto dst_buf_fail;
 	}
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00045 */
+	mdss_shdisp_lock_recovery();
+#endif /* CONFIG_SHDISP */
 	ret = mdss_mdp_rotator_queue(rot);
+#ifdef CONFIG_SHDISP /*CUST_ID_00045 */
+	mdss_shdisp_unlock_recovery();
+#endif /* CONFIG_SHDISP */
 
 	if (ret)
 		pr_err("rotator queue error session id=%x\n", req->id);

@@ -49,6 +49,10 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/rpm-smd.h>
 
+#ifdef CONFIG_SHDISP  /* CUST_ID_00071 */
+#include <linux/pm_qos.h>
+#endif /* CONFIG_SHDISP */
+
 #include "mdss.h"
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
@@ -1714,6 +1718,20 @@ static int mdss_mdp_register_sysfs(struct mdss_data_type *mdata)
 	return rc;
 }
 
+#ifdef CONFIG_SHDISP /* CUST_ID_00071 */
+static struct pm_qos_request mdss_mdp_qos_req;
+const int cpm_qos_latency_POWER_COLLAPSE_STANDALONE=209;
+void mdss_mdp_latency_deny_collapse(void)
+{
+	pm_qos_update_request(&mdss_mdp_qos_req, cpm_qos_latency_POWER_COLLAPSE_STANDALONE);
+}
+
+void mdss_mdp_latency_allow_collapse(void)
+{
+	pm_qos_update_request(&mdss_mdp_qos_req, PM_QOS_DEFAULT_VALUE);
+}
+#endif /* CONFIG_SHDISP */
+
 int mdss_panel_get_intf_status(u32 disp_num, u32 intf_type)
 {
 	int rc, intf_status = 0;
@@ -1875,6 +1893,11 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		pr_err("unable to initialize mdp debugging\n");
 		goto probe_done;
 	}
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00071 */
+	mdss_mdp_qos_req.type = PM_QOS_REQ_ALL_CORES;
+	pm_qos_add_request(&mdss_mdp_qos_req, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+#endif /* CONFIG_SHDISP */
 
 	pm_runtime_set_autosuspend_delay(&pdev->dev, AUTOSUSPEND_TIMEOUT_MS);
 	if (mdata->idle_pc_enabled)
@@ -3878,6 +3901,17 @@ static inline int mdss_mdp_suspend_sub(struct mdss_data_type *mdata)
 
 	return 0;
 }
+
+#ifdef CONFIG_SHDISP /* CUST_ID_00044 */
+void mdss_mdp_suspend_shdisp(void)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	if (mdata)
+		mdss_mdp_suspend_sub(mdata);
+	return;
+}
+#endif /* CONFIG_SHDISP */
 
 static inline int mdss_mdp_resume_sub(struct mdss_data_type *mdata)
 {
