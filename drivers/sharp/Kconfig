@@ -1,0 +1,14 @@
+#
+# SHARP configuration
+#
+
+menu "SHARP Device Drivers"
+
+source "drivers/sharp/nfc/Kconfig"
+source "drivers/sharp/shdiag/Kconfig"
+source "drivers/sharp/shboot/Kconfig"
+source "drivers/sharp/shaudio/Kconfig"
+source "drivers/sharp/proximity/Kconfig"
+source "drivers/sharp/shsensor_hub/ml630q790/Kconfig"
+
+endmenu
