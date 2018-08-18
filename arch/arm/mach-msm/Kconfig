@@ -385,6 +385,19 @@ config ARCH_MSM8226
 	select PINCTRL_MSM_TLMM
 	select ENABLE_VMALLOC_SAVINGS
 	select MSM_IRQ
+
+config SHARP
+	bool "SHARP Devices"
+	help
+	  Support for Sharp devices
+
+config ARCH_PA35
+	depends on ARCH_MSM8916
+	select SHARP
+	bool "SHARP PA35"
+	help
+	  Support for Sharp pa35
+
 endmenu
 
 config MSM_KRAIT_TBB_ABORT_HANDLER

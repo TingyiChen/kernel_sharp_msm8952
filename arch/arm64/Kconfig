@@ -268,6 +268,18 @@ config ARCH_MSM8992
 	  Enable kernel support for the MSM8992 chipset. If you don't
 	  know what this is, you can safely say 'N' here.
 
+config SHARP
+        bool "SHARP Devices"
+        help
+          Support for Sharp devices
+
+config ARCH_PA35
+        depends on ARCH_MSM8916
+        select SHARP
+        bool "SHARP PA35"
+        help
+          Support for Sharp pa35
+
 config ARCH_XGENE
 	bool "AppliedMicro X-Gene SOC Family"
 	help
@@ -717,3 +729,7 @@ source "arch/arm64/crypto/Kconfig"
 endif
 
 source "lib/Kconfig"
+
+config SHSYS_CUST
+       bool "SHARP SYSTEM CUSTOMIZE"
+       default n
