@@ -548,6 +548,20 @@ static const struct qpnp_vadc_map_pt adcmap_qrd_skul_btm_threshold[] = {
 
 /* Voltage to temperature */
 static const struct qpnp_vadc_map_pt adcmap_100k_104ef_104fb[] = {
+#ifdef CONFIG_BATTERY_SH
+	{1800,-40},
+	{1655,-20},
+	{1552,-10},
+	{1406, 0},
+	{1221,10},
+	{1009,20},
+	{797,30},
+	{604,40},
+	{447,50},
+	{324,60},
+	{234,70},
+	{0,122}
+#else //org
 	{1758,	-40},
 	{1742,	-35},
 	{1719,	-30},
@@ -582,7 +596,26 @@ static const struct qpnp_vadc_map_pt adcmap_100k_104ef_104fb[] = {
 	{59,	115},
 	{51,	120},
 	{44,	125}
+#endif /* CONFIG_BATTERY_SH */
 };
+
+#ifdef CONFIG_BATTERY_SH
+/* Voltage to temperature for XO_THERM */
+static const struct qpnp_vadc_map_pt adcmap_100k_104ef_104fb_xo_therm[] = {
+	{1800,-40},
+	{1657,-20},
+	{1554,-10},
+	{1407,0},
+	{1222,10},
+	{1009,20},
+	{797,30},
+	{604,40},
+	{446,50},
+	{324,60},
+	{234,70},
+	{0,122}
+};
+#endif /* CONFIG_BATTERY_SH */
 
 /* Voltage to temperature */
 static const struct qpnp_vadc_map_pt adcmap_150k_104ef_104fb[] = {
@@ -1014,9 +1047,15 @@ int32_t qpnp_adc_tdkntcg_therm(struct qpnp_vadc_chip *chip,
 		xo_thm = qpnp_adc_scale_ratiometric_calib(adc_code,
 			adc_properties, chan_properties);
 	}
+#ifndef CONFIG_BATTERY_SH
 	qpnp_adc_map_voltage_temp(adcmap_100k_104ef_104fb,
 		ARRAY_SIZE(adcmap_100k_104ef_104fb),
 		xo_thm, &adc_chan_result->physical);
+#else
+	qpnp_adc_map_voltage_temp(adcmap_100k_104ef_104fb_xo_therm,
+		ARRAY_SIZE(adcmap_100k_104ef_104fb_xo_therm),
+		xo_thm, &adc_chan_result->physical);
+#endif /* CONFIG_BATTERY_SH*/
 
 	return 0;
 }
