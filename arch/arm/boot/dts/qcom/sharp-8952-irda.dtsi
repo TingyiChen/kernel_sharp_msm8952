@@ -1,0 +1,46 @@
+/*
+ * Copyright (C) 2014 - 2015 SHARP CORPORATION All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+&soc {
+
+	serial@7AEF000 {
+		qcom,use-irda;
+		qcom,config-gpio = <0>;
+		status = "ok";
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
+
+	sharp,shirda {
+		compatible = "qcom,shirda";
+		irda,sd-gpio = <&msm_gpio 87 0x00>;
+		irda,tx-gpio = <&msm_gpio 16 0x00>;
+		irda,rx-gpio = <&msm_gpio 17 0x00>;
+		pinctrl-names = "default", "sleep", "active",
+				"rx-active", "tx-active";
+		pinctrl-0 = <&irda_sd_active &irda_tx_sleep &irda_rx_active>;
+		pinctrl-1 = <&irda_sd_active &irda_tx_sleep &irda_rx_sleep>;
+		pinctrl-2 = <&irda_sd_active &irda_tx_active &irda_rx_active>;
+		pinctrl-3 = <&irda_sd_active &irda_tx_sleep &irda_rx_active>;
+		pinctrl-4 = <&irda_sd_active &irda_tx_active &irda_rx_sleep>;
+
+		status = "ok";
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart1_apps_clk>,
+			<&clock_gcc clk_gcc_blsp2_ahb_clk>;
+	};
+
+};
+

@@ -13,7 +13,9 @@
 
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
-#include "msm8952-camera-sensor-mtp.dtsi"
+/* SH_CAMERA_DRIVER-> */
+//#include "msm8952-camera-sensor-mtp.dtsi"
+/* SH_CAMERA_DRIVER<- */
 
 &i2c_3 { /* BLSP1 QUP3 */
 	synaptics@20 {
@@ -92,29 +94,38 @@
 		pinctrl-0 = <&gpio_key_active>;
 		pinctrl-1 = <&gpio_key_suspend>;
 
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&msm_gpio 87 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x210>;
-			debounce-interval = <15>;
-		};
-
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&msm_gpio 86 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			debounce-interval = <15>;
-		};
-
-		vol_up {
-			label = "volume_up";
+		vol_down {
+			label = "volume_down";
 			gpios = <&msm_gpio 85 0x1>;
 			linux,input-type = <1>;
-			linux,code = <115>;
+			linux,code = <114>;
+			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
+//		camera_focus {
+//			label = "camera_focus";
+//			gpios = <&msm_gpio 87 0x1>;
+//			linux,input-type = <1>;
+//			linux,code = <0x210>;
+//			debounce-interval = <15>;
+//		};
+//
+//		camera_snapshot {
+//			label = "camera_snapshot";
+//			gpios = <&msm_gpio 86 0x1>;
+//			linux,input-type = <1>;
+//			linux,code = <0x2fe>;
+//			debounce-interval = <15>;
+//		};
+//
+//		vol_up {
+//			label = "volume_up";
+//			gpios = <&msm_gpio 85 0x1>;
+//			linux,input-type = <1>;
+//			linux,code = <115>;
+//			debounce-interval = <15>;
+//		};
 	};
 
 	 sound {
@@ -337,6 +348,8 @@
 		};
 	};
 
+/* SH_CAMERA_DRIVER-> DEL */
+/* 
 	qcom,pmi8950@3 {
 		qcom,leds@d300 {
 			compatible = "qcom,qpnp-flash-led";
@@ -348,6 +361,8 @@
 			qcom,follow-otst2-rb-disabled;
 		};
 	};
+*/
+/* SH_CAMERA_DRIVER<- DEL */
 };
 
 &sdhc_1 {

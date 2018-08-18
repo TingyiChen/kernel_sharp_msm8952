@@ -356,6 +356,8 @@
 		};
 	};
 
+/* SH_CAMERA_DRIVER-> DEL */
+/*
 	qcom,pmi8950@3 {
 		qcom,leds@d300 {
 			compatible = "qcom,qpnp-flash-led";
@@ -367,6 +369,8 @@
 			qcom,follow-otst2-rb-disabled;
 		};
 	};
+*/
+/* SH_CAMERA_DRIVER<- DEL */
 };
 
 &sdhc_1 {
