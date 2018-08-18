@@ -234,6 +234,10 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cycle_count_id),
 	POWER_SUPPLY_ATTR(safety_timer_expired),
 	POWER_SUPPLY_ATTR(restricted_charging),
+#ifdef CONFIG_BATTERY_SH
+	POWER_SUPPLY_ATTR(temp_cold),
+	POWER_SUPPLY_ATTR(temp_hot),
+#endif /* CONFIG_BATTERY_SH */
 	POWER_SUPPLY_ATTR(allow_hvdcp3),
 	POWER_SUPPLY_ATTR(max_pulse_allowed),
 	POWER_SUPPLY_ATTR(enable_aicl),
@@ -269,6 +273,10 @@ static umode_t power_supply_attr_is_visible(struct kobject *kobj,
 			if (psy->property_is_writeable &&
 			    psy->property_is_writeable(psy, property) > 0)
 				mode |= S_IWUSR;
+#ifdef CONFIG_BATTERY_SH
+			if (attrno == POWER_SUPPLY_PROP_VOLTAGE_MAX)
+				mode |= S_IWGRP;
+#endif
 
 			return mode;
 		}

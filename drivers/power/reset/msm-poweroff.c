@@ -56,6 +56,10 @@ static phys_addr_t tcsr_boot_misc_detect;
 #define EDL_MODE_PROP "qcom,msm-imem-emergency_download_mode"
 #define DL_MODE_PROP "qcom,msm-imem-download_mode"
 
+#ifdef CONFIG_SHBOOT_CUST
+#define SH_SCM_DOWNLOAD_MODE	0x40
+#endif /* CONFIG_SHBOOT_CUST */
+
 static int in_panic;
 static void *dload_mode_addr;
 static bool dload_mode_enabled;
@@ -118,11 +122,30 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
+#ifdef CONFIG_SHBOOT_CUST
+static void sh_set_dload_mode(int on)
+{
+	int ret;
+
+	if (dload_mode_addr) {
+		__raw_writel(on ? 0x1F2E3D4C : 0, dload_mode_addr);
+		__raw_writel(on ? 0xB4A56978 : 0,
+		       dload_mode_addr + sizeof(unsigned int));
+		mb();
+	}
+
+	ret = scm_set_dload_mode(on ? SH_SCM_DOWNLOAD_MODE : 0, 0);
+	if (ret)
+		pr_err("Failed to set secure DLOAD mode: %d\n", ret);
+}
+#endif /* CONFIG_SHBOOT_CUST */
+
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
 
+#ifndef CONFIG_SHBOOT_CUST
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -147,6 +170,7 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -170,6 +194,10 @@ static int dload_set(const char *val, struct kernel_param *kp)
 }
 #else
 #define set_dload_mode(x) do {} while (0)
+
+#ifdef CONFIG_SHBOOT_CUST
+#define sh_set_dload_mode(x) do {} while (0)
+#endif /* CONFIG_SHBOOT_CUST */
 
 static void enable_emergency_dload_mode(void)
 {
@@ -278,8 +306,13 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+#if defined(CONFIG_MSM_DLOAD_MODE) && defined(CONFIG_SHBOOT_CUST)
+		} else if (!strncmp(cmd, "downloader", 10)) {
+			sh_set_dload_mode(1);
+#else
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#endif /* CONFIG_MSM_DLOAD_MODE && CONFIG_SHBOOT_CUST */
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
