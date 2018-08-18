@@ -1354,6 +1354,10 @@ static struct i2c_driver msm_sensor_driver_i2c = {
 	.remove = msm_sensor_driver_i2c_remove,
 	.driver = {
 		.name = SENSOR_DRIVER_I2C,
+#ifdef CONFIG_ARCH_PA35
+		.owner = THIS_MODULE,
+		.of_match_table = msm_sensor_driver_dt_match,
+#endif
 	},
 };
 
@@ -1362,6 +1366,7 @@ static int __init msm_sensor_driver_init(void)
 	int32_t rc = 0;
 
 	CDBG("%s Enter\n", __func__);
+#ifndef CONFIG_ARCH_PA35
 	rc = platform_driver_register(&msm_sensor_platform_driver);
 	if (rc)
 		pr_err("%s platform_driver_register failed rc = %d",
@@ -1369,6 +1374,18 @@ static int __init msm_sensor_driver_init(void)
 	rc = i2c_add_driver(&msm_sensor_driver_i2c);
 	if (rc)
 		pr_err("%s i2c_add_driver failed rc = %d",  __func__, rc);
+#else
+	rc = i2c_add_driver(&msm_sensor_driver_i2c);
+	if (!rc) {
+		CDBG("%s probe i2c\n", __func__);
+	}
+	rc = platform_driver_probe(&msm_sensor_platform_driver,
+		msm_sensor_driver_platform_probe);
+	if (!rc) {
+		CDBG("%s probe success\n", __func__);
+		return rc;
+	}
+#endif
 
 	return rc;
 }
