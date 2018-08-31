@@ -1038,8 +1038,8 @@ int wmi_set_ie(struct wil6210_priv *wil, u8 type, u16 ie_len, const void *ie)
 	}
 
 	cmd = kzalloc(len, GFP_KERNEL);
-	if (!cmd){
-		return -ENOMEM;
+	if (!cmd) {
+		rc = -ENOMEM;
 		goto out;
 	}
 	if (!ie)
